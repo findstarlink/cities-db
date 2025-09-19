@@ -1,0 +1,6 @@
+.DS_Store
+source/
+intermediates/
+build/
+
+cities.db
