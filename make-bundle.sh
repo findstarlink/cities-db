@@ -65,10 +65,9 @@ PAGE_SIZE=1000
 N=$((($CITY_COUNT+$PAGE_SIZE-1)/$PAGE_SIZE))
 echo "Making $N pages"
 
-ANDROID_DATA_PATH="../app-android/android/app/src/main/java/com/findstarlink/data"
+ANDROID_DATA_PATH="build/android"
 ANDROID_RAW_DATA_PATH="$ANDROID_DATA_PATH/raw"
 
-rm -r "$ANDROID_RAW_DATA_PATH"
 mkdir -p "$ANDROID_RAW_DATA_PATH"
 
 allCitiesFile="$ANDROID_DATA_PATH/CitiesDB.java"
