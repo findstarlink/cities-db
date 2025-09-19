@@ -12,13 +12,11 @@ Bandwidth usage accounts for the majority of FindStarlink's running costs (even 
 
 ## What does this do?
 
-This project packs the city database into the smallest possible download, optimizing for maximum compression. The server transmits compressed files to browsers, so that's the size to optimize for.
+This project packs the city database by storing only the deltas of the coordinates, country id and division ids. And it doesn't store anything if there is no difference.
 
 The naive approach would be to store the data as an SQLite database, which results in a compressed file size of 759 KB (1.35 MB uncompressed).
 
-Instead, this library represents the city data in a custom text-based format, producing a bundle size of just 389 KB (1.11 MB uncompressed).
-
-This custom format is designed to compress really well, even with simple ZIP compression.
+This library produces a bundle size of just 389 KB (1.11 MB uncompressed). By reducing the amount of data stored and using text, this format compresses really well, even with simple ZIP compression.
 
 For a fast auto-complete dropdown of the 15,000 most populated cities, a download size of 389 KB is quite acceptable IMO.
 
