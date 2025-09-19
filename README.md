@@ -1,6 +1,6 @@
 # cities-db
 
-A database of the 15,000 most populated cities, compressed into a format suitable for auto-complete on web pages (<900 KB) or mobile apps.
+A database of the 15,000 most populated cities, compressed into a format suitable for auto-complete on web pages (<400 KB) or mobile apps.
 
 The data is fetched from [GeoNames.org](https://geonames.org), and processed into a custom format.
 
@@ -12,7 +12,7 @@ Bandwidth usage accounts for the majority of FindStarlink's running costs (even 
 
 ## What does this do?
 
-This project packs the city database into the smallest possible download, optimizing for maximum compression.
+This project packs the city database into the smallest possible download, optimizing for maximum compression. The server transmits compressed files to browsers, so that's the size to optimize for.
 
 The naive approach would be to store the data as an SQLite database, which results in a compressed file size of 759 KB (1.35 MB uncompressed).
 
