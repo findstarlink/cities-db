@@ -1,3 +1,8 @@
+# apt install libdbi-perl
+# apt install libdbd-sqlite3-perl
+
+mkdir -p source
+
 curl -o source/countryInfo.txt http://download.geonames.org/export/dump/countryInfo.txt
 curl -o source/admin1CodesASCII.txt http://download.geonames.org/export/dump/admin1CodesASCII.txt
 curl -o source/cities15000.zip http://download.geonames.org/export/dump/cities15000.zip
