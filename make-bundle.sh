@@ -146,7 +146,6 @@ cat intermediates/countries_web.js intermediates/admin1_web.js intermediates/cit
 echo "" >> build/cities_web.js
 echo "" >> build/cities_web.js
 cat decompress.js >> build/cities_web.js
-zip build/cities_web.zip build/cities_web.js
 
 ## iOS
 cp intermediates/countries_ios.ts intermediates/admin1_ios.ts intermediates/cities_ios.ts intermediates/info_ios.ts build/
