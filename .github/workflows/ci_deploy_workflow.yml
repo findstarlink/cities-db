@@ -20,10 +20,10 @@ jobs:
         python-version: '3.x'
     - name: Fetch cities data
       run: |-
-        ./import-db.sh
+        sh import-db.sh
     - name: Build the bundle
       run: |-
-        ./make-bundle.sh
+        sh make-bundle.sh
         mv build build-temp
     - name: Zip individual build targets
       run: |-
