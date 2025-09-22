@@ -3,7 +3,6 @@ import os
 import sys
 import argparse
 from tokenizers import Tokenizer, models, trainers, pre_tokenizers
-import array
 
 # Usage: python tokenize_names.py <input_db> <output_db>
 
@@ -30,19 +29,21 @@ def train_tokenizer(names, vocab_size):
     return tokenizer
 
 
-def tokenize_and_write(input_db, output_db, tokenizer):
+def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False):
     conn_in = sqlite3.connect(input_db)
     conn_out = sqlite3.connect(output_db)
     cur_in = conn_in.cursor()
-    cur_out = conn_out.cursor()
+    cur_out = cur_out = conn_out.cursor()
 
-    # Copy schema except for name columns, use TEXT for *_tokens
+    # Copy schema, optionally keeping original name columns
     for table in ["cities", "regions", "countries"]:
         cur_in.execute(f"PRAGMA table_info({table})")
         columns = cur_in.fetchall()
         new_columns = []
         for col in columns:
             if col[1] in ("city_name", "region_name", "country_name"):
+                if keep_original:
+                    new_columns.append(f"{col[1]} {col[2]}")
                 new_columns.append(f"{col[1]}_tokens TEXT")
             else:
                 new_columns.append(f"{col[1]} {col[2]}")
@@ -57,8 +58,16 @@ def tokenize_and_write(input_db, output_db, tokenizer):
         for row in rows:
             row = list(row)
             tokens = tokenizer.encode(row[name_idx]).ids
-            row[name_idx] = ",".join(map(str, tokens))
-            cur_out.execute(f"INSERT INTO {table} VALUES ({', '.join(['?']*len(row))})", row)
+            tokens_str = ",".join(map(str, tokens))
+            if keep_original:
+                # Insert original name and tokens
+                new_row = row[:]
+                new_row.insert(name_idx + 1, tokens_str)
+            else:
+                # Replace name with tokens
+                new_row = row[:]
+                new_row[name_idx] = tokens_str
+            cur_out.execute(f"INSERT INTO {table} VALUES ({', '.join(['?']*len(new_row))})", new_row)
 
     # Write vocabulary table
     cur_out.execute("CREATE TABLE vocabulary (token_id INTEGER PRIMARY KEY, token TEXT)")
@@ -77,6 +86,7 @@ def main():
     parser.add_argument("input_db", help="Input SQLite database file")
     parser.add_argument("output_db", help="Output SQLite database file")
     parser.add_argument("--vocab-size", type=int, default=1000, help="Vocabulary size for tokenizer (default: 5000)")
+    parser.add_argument("--keep-original", action="store_true", help="Include original name columns in output DB")
     args = parser.parse_args()
 
     if not os.path.exists(args.input_db):
@@ -86,7 +96,7 @@ def main():
     names = extract_names(conn)
     tokenizer = train_tokenizer(names, args.vocab_size)
     conn.close()
-    tokenize_and_write(args.input_db, args.output_db, tokenizer)
+    tokenize_and_write(args.input_db, args.output_db, tokenizer, keep_original=args.keep_original)
     print(f"Tokenized DB written to {args.output_db}")
 
 
