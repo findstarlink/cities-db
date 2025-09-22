@@ -2,5 +2,6 @@
 source/
 intermediates/
 build/
+.venv
 
 *.db
