@@ -143,6 +143,9 @@ echo -e "};\n}" >> "$admin1File"
 # merge
 ## web
 cat intermediates/countries_web.js intermediates/admin1_web.js intermediates/cities_web.js intermediates/info_web.js > build/cities_web.js
+echo "" >> build/cities_web.js
+echo "" >> build/cities_web.js
+cat decompress.js >> build/cities_web.js
 zip build/cities_web.zip build/cities_web.js
 
 ## iOS
