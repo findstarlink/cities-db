@@ -29,9 +29,9 @@ jobs:
       run: |-
         mkdir build
         cd build-temp
-        zip -r ../build/web.zip cities_web.js
-        zip -r ../build/typescript.zip countries_ios.ts admin1_ios.ts cities_ios.ts info_ios.ts
-        zip -r ../build/android.zip android
+        zip -r ../build/cities_web.zip cities_web.js
+        zip -r ../build/cities_sqlite_geohash.zip cities_geohash.db
+        zip -r ../build/cities_sqlite_simple.zip cities_simple.db
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -55,6 +55,6 @@ jobs:
       if: github.ref_type == 'tag'
       with:
         files: |-
-          web.zip
-          typescript.zip
-          android.zip
+          cities_web.zip
+          cities_sqlite_simple.zip
+          cities_sqlite_geohash.zip

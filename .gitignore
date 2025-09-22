@@ -3,4 +3,4 @@ source/
 intermediates/
 build/
 
-cities.db
+*.db
