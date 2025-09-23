@@ -1,6 +1,6 @@
 # cities-db
 
-A database of ~32,000 cities (cities in the world with population > 15,000), compressed into a format suitable for auto-complete on web pages (<400 KB) or mobile apps.
+A database of ~32,000 cities (cities in the world with population > 15,000), compressed into a format suitable for auto-complete on web pages (~283 KB) or mobile apps.
 
 The data is fetched from [GeoNames.org](https://geonames.org), and processed into a custom format.
 
