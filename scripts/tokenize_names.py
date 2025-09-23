@@ -29,7 +29,7 @@ def train_tokenizer(names, vocab_size):
     return tokenizer
 
 
-def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False):
+def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False, token_pack_format="blob"):
     conn_in = sqlite3.connect(input_db)
     conn_out = sqlite3.connect(output_db)
     cur_in = conn_in.cursor()
@@ -44,7 +44,10 @@ def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False):
             if col[1] in ("city_name", "region_name", "country_name"):
                 if keep_original:
                     new_columns.append(f"{col[1]} {col[2]}")
-                new_columns.append(f"{col[1]}_tokens TEXT")
+                if token_pack_format == "csv":
+                    new_columns.append(f"{col[1]}_tokens TEXT")
+                else:
+                    new_columns.append(f"{col[1]}_tokens BLOB")
             else:
                 new_columns.append(f"{col[1]} {col[2]}")
         cur_out.execute(f"CREATE TABLE {table} ({', '.join(new_columns)})")
@@ -58,15 +61,18 @@ def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False):
         for row in rows:
             row = list(row)
             tokens = tokenizer.encode(row[name_idx]).ids
-            tokens_str = ",".join(map(str, tokens))
+            if token_pack_format == "csv":
+                tokens_val = ",".join(map(str, tokens))
+            else:
+                tokens_val = b"".join(token.to_bytes(2, "big") for token in tokens)
             if keep_original:
                 # Insert original name and tokens
                 new_row = row[:]
-                new_row.insert(name_idx + 1, tokens_str)
+                new_row.insert(name_idx + 1, tokens_val)
             else:
                 # Replace name with tokens
                 new_row = row[:]
-                new_row[name_idx] = tokens_str
+                new_row[name_idx] = tokens_val
             cur_out.execute(f"INSERT INTO {table} VALUES ({', '.join(['?']*len(new_row))})", new_row)
 
     # Write vocabulary table
@@ -81,12 +87,18 @@ def tokenize_and_write(input_db, output_db, tokenizer, keep_original=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Tokenize names in a SQLite DB and store tokens as space-separated text."
+        description="Tokenize names in a SQLite DB and store tokens as csv or as a BLOB of 2-byte tokens."
     )
     parser.add_argument("input_db", help="Input SQLite database file")
     parser.add_argument("output_db", help="Output SQLite database file")
     parser.add_argument("--vocab-size", type=int, default=1000, help="Vocabulary size for tokenizer (default: 5000)")
     parser.add_argument("--keep-original", action="store_true", help="Include original name columns in output DB")
+    parser.add_argument(
+        "--token-pack-format",
+        choices=["csv", "blob"],
+        default="blob",
+        help="How to store tokens: as csv (TEXT) or as blob (2 bytes per token, default: blob)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.input_db):
@@ -96,7 +108,13 @@ def main():
     names = extract_names(conn)
     tokenizer = train_tokenizer(names, args.vocab_size)
     conn.close()
-    tokenize_and_write(args.input_db, args.output_db, tokenizer, keep_original=args.keep_original)
+    tokenize_and_write(
+        args.input_db,
+        args.output_db,
+        tokenizer,
+        keep_original=args.keep_original,
+        token_pack_format=args.token_pack_format,
+    )
     print(f"Tokenized DB written to {args.output_db}")
 
 
