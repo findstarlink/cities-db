@@ -5,3 +5,4 @@ build/
 .venv
 
 *.db
+__pycache__/
