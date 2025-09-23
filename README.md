@@ -12,13 +12,17 @@ Bandwidth usage accounts for the majority of FindStarlink's running costs (even 
 
 ## What does this do?
 
-This project packs the city database by storing only the deltas of the coordinates, country id and division ids. And it doesn't store anything if there is no difference.
+Achieves significant compression through:
+- Delta encoding for sorted geohashes
+- Delta encoding for region/country IDs
+- Token-based string compression
+- Binary format with minimal overhead
 
-The naive approach would be to store the data as an SQLite database, which results in a compressed file size of 759 KB (1.35 MB uncompressed).
+The naive approach would be to store the data as an SQLite database, which results in a compressed file size of 1.4 MB (2.55 MB uncompressed).
 
-This library produces a bundle size of just 389 KB (1.11 MB uncompressed). By reducing the amount of data stored and using text, this format compresses really well, even with simple ZIP compression.
+This library produces a bundle size of just 283 KB (573 KB uncompressed), by using the methods described above.
 
-For a fast, fully-local auto-complete dropdown of most of the major cities of the world, a download size of 389 KB is quite acceptable IMO.
+This makes it quite useful for transferring over the web - for a fast, fully-local auto-complete dropdown of most of the major cities of the world.
 
 ## Why only cities with population > 15k?
 
@@ -26,56 +30,156 @@ This number is sufficient for FindStarlink, as satellite predictions do not chan
 
 However, you can increase the number of cities by downloading a different dataset in [import-db.sh](import-db.sh).
 
-## Deployment Targets and Output Data Formats
+## Features
 
-### Web Deployment Target
-**Output Location:** `build/cities_web.js` and `build/cities_web.zip`
+- **Efficient Binary Format**: Delta-compressed geohashes, region/country IDs, and token-based string storage
+- **Fast Lookups**: O(log n) binary search on sorted geohashes  
+- **Single File Distribution**: All data bundled into one file for easy web transmission
+- **Token-based Compression**: String data compressed using a shared vocabulary
+- **Browser and Node.js Compatible**: Works in both environments
 
-**Data Format:**
-- **Combined JavaScript file** containing:
-  - `countries[]` - Array of country names as strings
-  - `admin1[]` - Array of administrative division names as strings
-  - `cities[]` - Array of city entries: `[cityName, logPopulation]`
-  - `cityInfo[]` - Delta-compressed coordinate and reference data
-- **Compression:** ZIP compressed for web delivery (~389 KB compressed, 1.11 MB uncompressed)
-- **Usage:** Direct JavaScript inclusion for web autocomplete functionality
+## Bundle Format
 
-### iOS Deployment Target
-**Output Location:** `build/` directory with separate TypeScript files
+The bundle file (`cities_bundle.bin`) contains:
 
-**Data Format:**
-- **countries_ios.ts** - TypeScript module with countries array + export statement
-- **admin1_ios.ts** - TypeScript module with admin1 divisions array + export statement
-- **cities_ios.ts** - TypeScript module with cities array: `[cityName, rowId]` + export statement
-- **info_ios.ts** - TypeScript module with uncompressed coordinate data: `[id, lat, lng, countryId, admin1Id]` + export statement
-- **Key difference:** Uses uncompressed absolute coordinates (not delta-compressed) and row IDs instead of log population
+1. **Header (32 bytes)**:
+   - Magic bytes "CITYDB01" (8 bytes)
+   - Vocabulary entries count (4 bytes)
+   - Cities count (4 bytes) 
+   - Regions count (4 bytes)
+   - Countries count (4 bytes)
+   - Reserved space (8 bytes)
 
-### Android Deployment Target
-**Output Location:** `build/android/` directory structure
+2. **Vocabulary Section**:
+   - Token ID (2 bytes, big-endian)
+   - Token length (1 byte)
+   - Token text (UTF-8)
 
-**Data Format:**
-- **Paginated Java classes** (1000 cities per page):
-  - `CitiesDB.java` - Main class with metadata and page references
-  - `raw/Cities{N}.java` - City names and offsets arrays for each page
-  - `raw/Info{N}.java` - Coordinate and reference data arrays for each page
-  - `raw/Countries.java` - Countries array
-  - `raw/Admin1.java` - Administrative divisions array
-- **Pagination:** Splits data into chunks to work around Java's class member limits
-- **Data Types:** Uses Java String[] and int[] arrays
+3. **Data Sections** (each prefixed with size):
+   - Delta-compressed geohashes
+   - Delta-compressed region IDs
+   - Delta-compressed country IDs
+   - Token-compressed city names
+   - Token-compressed region names
+   - Token-compressed country names
 
-## Data Processing Pipeline
+## API Reference
 
-1. **Source Data** (GeoNames.org):
-   - Tab-separated text files (countryInfo.txt, cities15000.txt, admin1CodesASCII.txt)
-   - Contains ~32,000 cities (with population > 15,000)
+### Class: CityDatabase
 
-2. **Output Generation**:
-   - **Web**: Delta compression via `compress.py` for minimal file size
-   - **iOS**: TypeScript modules with absolute coordinates
-   - **Android**: Paginated Java classes to work around Java's class member limits
+#### Constructor
+```javascript
+const db = new CityDatabase();
+```
 
-## Key Optimizations by Target
+#### Methods
 
-- **Web**: Aggressive compression (delta encoding) prioritizing download size
-- **iOS**: TypeScript compatibility with absolute coordinates for easier processing
-- **Android**: Fast startup since the DB is compiled along with the rest of the code
+##### `loadFromBundle(buffer)`
+Load database from bundled binary data.
+- **buffer**: `ArrayBuffer` - The bundled binary data
+- **Returns**: `Promise<void>`
+
+```javascript
+const response = await fetch('cities_bundle.bin');
+const buffer = await response.arrayBuffer();
+await db.loadFromBundle(buffer);
+```
+
+##### `getCityFromGeohash(geohash)`
+Get formatted city information from geohash.
+- **geohash**: `string` - The geohash to look up
+- **Returns**: `string|null` - Formatted "cityName, regionName, countryName" or null
+
+```javascript
+const result = db.getCityFromGeohash('u14zy');
+// Returns: "'s-Gravenzande, Zuid-Holland, Netherlands"
+```
+
+##### `findCityByGeohash(geohash)`
+Find city object by geohash.
+- **geohash**: `string` - The geohash to search for
+- **Returns**: `Object|null` - City object with {geohash, name, regionId, countryId}
+
+```javascript
+const city = db.findCityByGeohash('u14zy');
+// Returns: {geohash: 'u14zy', name: "'s-Gravenzande", regionId: 3146, countryId: 224}
+```
+
+##### `findCitiesByGeohashPrefix(prefix, limit)`
+Find cities by geohash prefix (useful for proximity searches).
+- **prefix**: `string` - The geohash prefix to search for
+- **limit**: `number` - Maximum results (default: 50)
+- **Returns**: `Array` - Array of city objects
+
+```javascript
+const cities = db.findCitiesByGeohashPrefix('u14', 10);
+// Returns array of up to 10 cities with geohashes starting with 'u14'
+```
+
+##### `getStats()`
+Get database statistics.
+- **Returns**: `Object` - {cities, regions, countries, vocabularySize}
+
+```javascript
+const stats = db.getStats();
+// Returns: {cities: 32446, regions: 3864, countries: 252, vocabularySize: 1000}
+```
+
+## Usage Examples
+
+### Browser Usage
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="cityDatabase.js"></script>
+</head>
+<body>
+    <script>
+        async function loadAndTest() {
+            const db = new CityDatabase();
+            
+            // Load the database
+            const response = await fetch('cities_bundle.bin');
+            const buffer = await response.arrayBuffer();
+            await db.loadFromBundle(buffer);
+            
+            // Look up a city
+            const result = db.getCityFromGeohash('u14zy');
+            console.log(result); // "'s-Gravenzande, Zuid-Holland, Netherlands"
+            
+            // Search by prefix
+            const nearby = db.findCitiesByGeohashPrefix('u14', 5);
+            console.log(nearby);
+        }
+        
+        loadAndTest();
+    </script>
+</body>
+</html>
+```
+
+### Node.js Usage
+
+```javascript
+const fs = require('fs');
+const CityDatabase = require('./cityDatabase.js');
+
+async function example() {
+    const db = new CityDatabase();
+    
+    // Load the database
+    const buffer = fs.readFileSync('cities_bundle.bin');
+    await db.loadFromBundle(buffer.buffer);
+    
+    // Look up cities
+    console.log(db.getCityFromGeohash('u14zy'));
+    console.log(db.getCityFromGeohash('u15y0'));
+    
+    // Get statistics
+    console.log(db.getStats());
+}
+
+example();
+```
