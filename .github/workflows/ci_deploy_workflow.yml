@@ -33,7 +33,8 @@ jobs:
       run: |-
         mkdir build
         cd build-temp
-        zip -r ../build/cities_web.zip cities_bundle.bin ../cityDatabase.js
+        cp ../cityDatabase.js .
+        zip -r ../build/cities_web.zip cities_bundle.bin cityDatabase.js
         zip -r ../build/cities_sqlite_geohash.zip cities_geohash.db
         zip -r ../build/cities_sqlite_simple.zip cities_simple.db
     - name: Upload Artifact
