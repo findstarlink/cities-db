@@ -6,7 +6,7 @@ The data is fetched from [GeoNames.org](https://geonames.org), and processed int
 
 ## Why?
 
-This library was created for [findstarlink.com](https://findstarlink.com). Using the Google Maps API for auto-complete, or hosting a dedicated API endpoint, would be pretty expensive. I don't see why we need a remote service for this.
+This library was created for [findstarlink.com](https://findstarlink.com). It would be pretty expensive to use the Google Maps API for auto-complete, or host a dedicated API endpoint. And I don't see why we need a remote service for this.
 
 Bandwidth usage accounts for the majority of FindStarlink's running costs (even after using a CDN). So it was pretty important to keep this library's file size as small as possible.
 
